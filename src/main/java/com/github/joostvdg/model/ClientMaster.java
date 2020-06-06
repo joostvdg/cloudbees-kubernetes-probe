@@ -6,6 +6,7 @@ public class ClientMaster {
     private String namespace;
     private String status;
     private String type;
+    private String version;
     private Storage storage;
     private Network network;
 
@@ -41,6 +42,14 @@ public class ClientMaster {
         this.type = type;
     }
 
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
     public Storage getStorage() {
         return storage;
     }
@@ -63,6 +72,7 @@ public class ClientMaster {
                 "name='" + name + '\'' +
                 ", namespace='" + namespace + '\'' + "\n" +
                 ", status='" + status + '\'' + "\n" +
+                ", version='" + version + '\'' + "\n" +
                 ", type='" + type + '\'' + "\n" +
                 ", storage=" + storage + "\n" +
                 ", network=" + network + "\n" +

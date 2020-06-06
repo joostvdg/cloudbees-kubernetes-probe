@@ -4,6 +4,7 @@ import com.github.joostvdg.model.ClientMaster;
 import com.github.joostvdg.model.Network;
 import com.github.joostvdg.model.OperationsCenter;
 import com.github.joostvdg.model.Storage;
+import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
@@ -16,9 +17,11 @@ import io.kubernetes.client.util.Config;
 import picocli.CommandLine;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @CommandLine.Command(name = "sts", description = "...",
         mixinStandardHelpOptions = true)
@@ -27,6 +30,7 @@ public class ListCBSts  implements Runnable {
     public static void main(String[] args) {
         CommandLine.run(new ListPodsDemo(), args);
     }
+
 
     public Network findNetwork(String name, String namespace) {
         Network network = new Network();
@@ -89,7 +93,7 @@ public class ListCBSts  implements Runnable {
         // we expect one and only one entry!
         if (!list.getItems().isEmpty() ) {
             var pvc = list.getItems().get(0);
-            String persistentVolumeSize =pvc.getStatus().getCapacity().toString();
+            String persistentVolumeSize = calculateVolumeSize(pvc.getStatus().getCapacity());
             String persistentVolumeClaim = pvc.getMetadata().getName();
             String persistentVolume = pvc.getSpec().getVolumeName();
             String storageClass = pvc.getSpec().getStorageClassName();
@@ -99,6 +103,42 @@ public class ListCBSts  implements Runnable {
             storage.setStorageClass(storageClass);
         }
         return storage;
+    }
+
+    private String calculateVolumeSize(Map<String, Quantity> capacity) {
+        String volumeSize = "";
+
+        if (capacity.containsKey("storage")) {
+            var storageCapacity = capacity.get("storage");
+            if (storageCapacity.getFormat().equals(Quantity.Format.BINARY_SI)) {
+                BigDecimal diviser = new BigDecimal("1024");
+                int sizeInGb = storageCapacity.getNumber().divide(diviser).divide(diviser).divide(diviser).intValue();
+                volumeSize = "" + sizeInGb + "Gi";
+            }
+        }
+
+        return volumeSize;
+    }
+
+
+    public String parseVersionFromImage(String imageName) {
+        String version = "";
+        if (imageName.contains(":")) {
+            int colonIndex = imageName.lastIndexOf(":");
+            version = imageName.substring(colonIndex + 1);
+        }
+
+        return version;
+    }
+
+    private static final String CONTAINER_NAME = "jenkins";
+    public String parseImageFromContainer(List<V1Container> containers) {
+        for (V1Container container : containers) {
+            if (CONTAINER_NAME.equals(container.getName())) {
+                return parseVersionFromImage(container.getImage());
+            }
+        }
+        return "";
     }
 
     public List<OperationsCenter> findOperationsCenters() {
@@ -133,6 +173,8 @@ public class ListCBSts  implements Runnable {
             operationsCenter.setStorage(storage);
             var network = findNetwork("cjoc", namespace);
             operationsCenter.setNetwork(network);
+            String version = parseImageFromContainer(sts.getSpec().getTemplate().getSpec().getContainers());
+            operationsCenter.setVersion(version);
             operationsCenters.add(operationsCenter);
         }
 
@@ -172,6 +214,13 @@ public class ListCBSts  implements Runnable {
             clientMaster.setStorage(storage);
             var network = findNetwork(name, namespace);
             clientMaster.setNetwork(network);
+            String type = "Managed Master";
+            if (sts.getMetadata().getName().startsWith("teams-")) {
+                type = "Team Master";
+            }
+            String version = parseImageFromContainer(sts.getSpec().getTemplate().getSpec().getContainers());
+            clientMaster.setVersion(version);
+            clientMaster.setType(type);
             clientMasters.add(clientMaster);
         }
 

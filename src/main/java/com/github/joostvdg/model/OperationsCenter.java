@@ -4,6 +4,7 @@ public class OperationsCenter {
 
     private String namespace;
     private String status;
+    private String version;
     private Storage storage;
     private Network network;
 
@@ -39,11 +40,20 @@ public class OperationsCenter {
         this.network = network;
     }
 
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
     @Override
     public String toString() {
         return "OperationsCenter{" +
                 "namespace='" + namespace + '\'' +
                 ", status=" + status + "\n" +
+                ", version=" + version + "\n" +
                 ", storage=" + storage + "\n" +
                 ", network=" + network + "\n" +
                 '}';
