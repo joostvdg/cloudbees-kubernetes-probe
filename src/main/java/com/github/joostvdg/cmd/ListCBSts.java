@@ -4,13 +4,13 @@ import com.github.joostvdg.model.ClientMaster;
 import com.github.joostvdg.model.Network;
 import com.github.joostvdg.model.OperationsCenter;
 import com.github.joostvdg.model.Storage;
+import com.jakewharton.picnic.*;
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
-import io.kubernetes.client.openapi.apis.ExtensionsApi;
 import io.kubernetes.client.openapi.apis.ExtensionsV1beta1Api;
 import io.kubernetes.client.openapi.models.*;
 import io.kubernetes.client.util.Config;
@@ -236,9 +236,112 @@ public class ListCBSts  implements Runnable {
             var operationsCenters = findOperationsCenters() ;
             var clientMasters = findClientMasters();
 
-            operationsCenters.forEach(System.out::println);
-            System.out.println("-----------------");
-            clientMasters.forEach(System.out::println);
+//            operationsCenters.forEach(System.out::println);
+//            System.out.println("-----------------");
+//            clientMasters.forEach(System.out::println);
+
+//            header: com.jakewharton.picnic.TableSection
+//            body: com.jakewharton.picnic.TableSection
+//            footer: com.jakewharton.picnic.TableSection
+//            cellStyle: com.jakewharton.picnic.CellStyle
+//            tableStyle: com.jakewharton.picnic.TableStyle?
+
+//            row: com.jakewharton.picnic.Row
+            // https://github.com/JakeWharton/picnic#real-world-example
+            var headerNameCell = new Cell.Builder("Name").setRowSpan(2).build();
+            var headerDefaultStats = new Cell.Builder("Main").setColumnSpan(4).build();
+            var headerNetworkStats = new Cell.Builder("Network").setColumnSpan(4).build();
+            var headerStorageStats = new Cell.Builder("Storage").setColumnSpan(4).build();
+            var headerRow = new Row.Builder()
+                    .addCell(headerNameCell)
+                    .addCell(headerDefaultStats)
+                    .addCell(headerNetworkStats)
+                    .addCell(headerStorageStats)
+                    .build();
+            var headerRowDetails = new Row.Builder()
+                    .addCell(new Cell.Builder("namespace").build())
+                    .addCell(new Cell.Builder("status").build())
+                    .addCell(new Cell.Builder("version").build())
+                    .addCell(new Cell.Builder("type").build())
+                    .addCell(new Cell.Builder("service").build())
+                    .addCell(new Cell.Builder("hostname").build())
+                    .addCell(new Cell.Builder("path").build())
+                    .addCell(new Cell.Builder("tls").build())
+                    .addCell(new Cell.Builder("pvc").build())
+                    .addCell(new Cell.Builder("pv").build())
+                    .addCell(new Cell.Builder("size").build())
+                    .addCell(new Cell.Builder("class").build())
+                    .build();
+
+            var headerCellStyle = new CellStyle.Builder()
+                    .setAlignment(TextAlignment.BottomLeft)
+                    .setBorder(true)
+                    .build();
+            var header = new TableSection.Builder()
+                    .addRow(headerRow)
+                    .addRow(headerRowDetails)
+                    .setCellStyle(headerCellStyle)
+                    .build();
+
+            var bodyBuilder = new TableSection.Builder();
+            for (OperationsCenter oc : operationsCenters) {
+                var cjocBodyRow = new Row.Builder()
+                        .addCell("cjoc")
+                        .addCell(oc.getNamespace())
+                        .addCell(oc.getStatus())
+                        .addCell(oc.getVersion())
+                        .addCell("CJOC")
+                        .addCell(oc.getNetwork().getService())
+                        .addCell(oc.getNetwork().getHostname())
+                        .addCell(oc.getNetwork().getPath())
+                        .addCell(""+oc.getNetwork().isTls())
+                        .addCell(oc.getStorage().getPersistentVolumeClaim())
+                        .addCell(oc.getStorage().getPersistentVolume())
+                        .addCell(oc.getStorage().getPersistentVolumeSize())
+                        .addCell(oc.getStorage().getStorageClass())
+                        .build();
+                bodyBuilder.addRow(cjocBodyRow);
+            }
+
+            for (ClientMaster cm : clientMasters) {
+                var cmBodyRow = new Row.Builder()
+                        .addCell(cm.getName())
+                        .addCell(cm.getNamespace())
+                        .addCell(cm.getStatus())
+                        .addCell(cm.getVersion())
+                        .addCell(cm.getType())
+                        .addCell(cm.getNetwork().getService())
+                        .addCell(cm.getNetwork().getHostname())
+                        .addCell(cm.getNetwork().getPath())
+                        .addCell(""+cm.getNetwork().isTls())
+                        .addCell(cm.getStorage().getPersistentVolumeClaim())
+                        .addCell(cm.getStorage().getPersistentVolume())
+                        .addCell(cm.getStorage().getPersistentVolumeSize())
+                        .addCell(cm.getStorage().getStorageClass())
+                        .build();
+                bodyBuilder.addRow(cmBodyRow);
+            }
+
+            var body = bodyBuilder.build();
+
+            var tableStyle = new TableStyle.Builder().setBorderStyle(BorderStyle.Hidden).build();
+            var cellStyle = new CellStyle.Builder()
+                    .setAlignment(TextAlignment.MiddleRight)
+                    .setPaddingLeft(1)
+                    .setPaddingRight(1)
+                    .setBorderLeft(true)
+                    .setBorderRight(true)
+                    .build();
+            Table table = new Table.Builder()
+                    .setHeader(header)
+                    .setBody(body)
+                    .setTableStyle(tableStyle)
+                    .setCellStyle(cellStyle)
+                    .build();
+            System.out.println(" ");
+            System.out.println(table.toString());
+            System.out.println(" ");
+
         } catch (IOException e) {
             e.printStackTrace();
         }
